@@ -1,0 +1,97 @@
+오픈 API
+회원가입
+
+
+======================
+탈탄소 사회로의 전환
+「탄소중립기본법」(2022년 3월 25일 시행)은 시행 후 1년 이내에 2050 탄소중립 국가전략을 수립하도록 하고 있다. 2021년 10월 국무회의가 심의·의결한 「2050 탄소중립 시나리오」는 일부 분야에서 다른 내용의 두 가지 안을 제시하고 있어, 향후 2050 탄소중립 국가전략을 논의해 나가는 과정에 있어서 많은 도전과제를 남겨두고 있다.
+
+다음 뉴스를 계속 크롤링해서 가져오니까
+다음에서 막아버림.. 일단 기다려야 하고, 너무 빠르게 접근해서 위험하다 판단했을 수 있으니 sleep 을 줘서 하면 좀 나을 수도 있음.
+
+
+수업시간에 만든 함수 사용
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+def search_naver_to_csv(keyword):
+    
+    url1 = "https://search.naver.com/search.naver?where=news&sm=tab_pge&query="
+    url2 = keyword
+    url3 = "&start="
+    li1 = []
+    li2 = []
+    for i in range(1, 11):
+        url = url1 + url2 + url3 + str(i)
+        html = requests.get(url).text
+        soup = BeautifulSoup(html, 'html.parser')
+        title = soup.find_all(class_ = 'news_tit')
+        for j in title:
+            li1.append(j.text)
+            li2.append(j.attrs['href'])
+            
+        # print(li1)
+        # print(li2)
+        
+        data = pd.DataFrame({'title' : li1, 'link' : li2})
+        data.to_csv(f'{keyword}.csv', encoding='cp949')
+        return data
+    
+search_naver_to_csv('탄소')
+
+
+
+한글깨짐현상 발견
+encoding='cp949' 처리
+
+
+
+여러 페이지에서 긁어오기 위해 함수 수정 및 작성
+- + "&sort=1" 최신순으로 변경
+- range(0, 30, 3) 무분별해서.. 좀 골라봤는데 이러면 주요데이터를 놓칠 가능성도 있네.
+- dataframe 만들고 저장하는 코드가 for문 안에 들어가 있어서 1페이지만 저장되었음. 들여쓰기 지워서 실행하니 목표달성.
+
+
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+def search_naver_to_csv(keyword):
+    
+    url1 = "https://search.naver.com/search.naver?where=news&sm=tab_pge&query="
+    url2 = keyword + "&sort=1"
+    url3 = "&start="
+    li1 = []
+    li2 = []
+    for i in range(0, 30, 3):
+        url = url1 + url2 + url3 + str(i) + '1'
+        html = requests.get(url).text
+        soup = BeautifulSoup(html, 'html.parser')
+        title = soup.find_all(class_ = 'news_tit')
+        for j in title:
+            li1.append(j.text)
+            li2.append(j.attrs['href'])
+        
+    data = pd.DataFrame({'title' : li1, 'link' : li2})
+    data.to_csv(f'{keyword}.csv', encoding='cp949')
+    return data
+    
+search_naver_to_csv('탄소')
+
+-> "- + "&sort=1" 최신순으로 변경" 오류
+UnicodeEncodeError: 'cp949' codec can't encode character '\xa0' in position 36: illegal multibyte sequence
+
+구글링
+import sys
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding = 'utf-8')
+sys.stderr = io.TextIOWrapper(sys.stdout.detach(), encoding = 'utf-8')
+
+
+
+URL 비교해서 패턴 찾기
+
+https://search.naver.com/search.naver?where=news&query=%ED%83%84%EC%86%8C&sm=tab_opt&sort=1&photo=0&field=0&pd=0&ds=&de=&docid=&related=0&mynews=0&office_type=0&office_section_code=0&news_office_checked=&nso=so%3Add%2Cp%3Aall&is_sug_officeid=0
+
+https://search.naver.com/search.naver?where=news&query=%ED%83%84%EC%86%8C&sm=tab_opt&sort=1&photo=3&field=0&pd=5&ds=2021.10.31&de=2022.10.31&docid=&related=0&mynews=0&office_type=0&office_section_code=0&news_office_checked=&nso=so%3Add%2Cp%3A1y%2Ca%3Aall&is_sug_officeid=0
